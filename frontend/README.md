@@ -38,6 +38,20 @@ Run `./mvnw test` (`.\\mvnw.cmd test` on Windows) in `../tripnest-backend`.
 Backend tests use an isolated H2 database and cover authentication, CORS, trips,
 budgets, and expenses; they do not require production credentials.
 
+## Render deployment
+
+The backend includes a multi-stage Dockerfile. For a manually created Render web
+service, select Docker, root directory `tripnest-backend`, and Dockerfile path
+`./Dockerfile`. The root `render.yaml` also configures Docker for Blueprint use.
+The free database in that Blueprint is for demos and expires after 30 days.
+Free backend instances sleep when idle and block the SMTP port this app uses;
+use paid instances for always-on operation and SMTP notifications.
+
+Administrator creation is disabled by default. To provision one, set both
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` in the backend environment; the password must
+contain at least 12 characters. These settings create a missing account and do
+not rotate an existing account's password.
+
 ---
 
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).

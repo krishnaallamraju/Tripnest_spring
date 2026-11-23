@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
  
 import java.util.List;
  
@@ -23,8 +24,10 @@ public class DataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
  
     private static final List<String> DEFAULT_ROLES = List.of("TRAVELER", "GROUP_ADMIN", "ADMINISTRATOR");
-    private static final String DEFAULT_ADMIN_EMAIL = "admin@tripnest.com";
-    private static final String DEFAULT_ADMIN_PASSWORD = "Admin@123";
+    @Value("${ADMIN_EMAIL:}")
+    private String adminEmail;
+    @Value("${ADMIN_PASSWORD:}")
+    private String adminPassword;
  
     @Override
     public void run(String... args) {
@@ -48,7 +51,13 @@ public class DataSeeder implements CommandLineRunner {
         // Guard: if the seeded admin already exists, stop here.
         // This is the ONLY place in the entire codebase that creates an
         // ADMINISTRATOR account directly — and it only ever runs once.
-        if (userRepository.existsByEmail(DEFAULT_ADMIN_EMAIL)) {
+        if (adminEmail.isBlank() || adminPassword.isBlank()) {
+            return;
+        }
+        if (adminPassword.length() < 12) {
+            throw new IllegalStateException("ADMIN_PASSWORD must contain at least 12 characters");
+        }
+        if (userRepository.existsByEmail(adminEmail)) {
             return;
         }
  
@@ -57,8 +66,8 @@ public class DataSeeder implements CommandLineRunner {
  
         User admin = new User();
         admin.setName("Default Administrator");
-        admin.setEmail(DEFAULT_ADMIN_EMAIL);
-        admin.setPasswordHash(passwordEncoder.encode(DEFAULT_ADMIN_PASSWORD));
+        admin.setEmail(adminEmail);
+        admin.setPasswordHash(passwordEncoder.encode(adminPassword));
         admin.setRole(adminRole);
         admin.setOauthGoogle(false);
         userRepository.save(admin);
