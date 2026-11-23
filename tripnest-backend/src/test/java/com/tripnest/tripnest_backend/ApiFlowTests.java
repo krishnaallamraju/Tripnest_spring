@@ -35,6 +35,7 @@ class ApiFlowTests {
     }
 
     @Test void healthAndCors() throws Exception {
+        assertEquals("TripNest API", ok("GET", "/", null, null).get("service").asText());
         assertEquals("UP", ok("GET", "/health", null, null).get("status").asText());
         for (String origin : new String[]{"https://tripnest.example", "https://preview.example"}) {
             var response = client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/auth/login"))
@@ -44,6 +45,7 @@ class ApiFlowTests {
             assertEquals(origin, response.headers().firstValue("Access-Control-Allow-Origin").orElse(""));
         }
         assertEquals(401, request("GET", "/trips/my", null, null).statusCode());
+        assertEquals(401, request("GET", "/api/notifications", null, "expired-or-invalid-token").statusCode());
     }
 
     @Test void registerLoginAndTripBudgetExpenseFlow() throws Exception {

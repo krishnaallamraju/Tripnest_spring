@@ -154,6 +154,7 @@ const API_URL =
 
 // Allow a sleeping backend to start before abandoning the first request.
 const REQUEST_TIMEOUT_MS = 90_000;
+export const SESSION_EXPIRED_EVENT = "tripnest:session-expired";
 
 function session() {
   if (typeof window === "undefined") {
@@ -236,6 +237,14 @@ export async function api<T>(
   }
 
   if (!response.ok) {
+    if (response.status === 401 && !path.startsWith("/api/auth/") && typeof window !== "undefined") {
+      // Do not let a late response from an old session erase a newly signed-in session.
+      if (session().token === token) {
+        clearSession();
+        window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      }
+      throw new Error("Your session has expired. Please sign in again.");
+    }
     let message =
       response.status >= 500
         ? "TripNest's service is temporarily unavailable. Please try again shortly."
@@ -285,6 +294,7 @@ export function saveSession(
 export function clearSession() {
   localStorage.removeItem("tripnest_email");
   localStorage.removeItem("tripnest_token");
+  localStorage.removeItem("user");
 }
 
 /* =========================

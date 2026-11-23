@@ -70,7 +70,7 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/health").permitAll()
+                .requestMatchers(HttpMethod.GET, "/", "/health").permitAll()
                 .requestMatchers("/weather/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/destinations/search").permitAll()
                 .anyRequest().authenticated()

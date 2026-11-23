@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { ReactNode } from "react";
-import { clearSession } from "../lib/api";
+import { useEffect, type ReactNode } from "react";
+import { clearSession, SESSION_EXPIRED_EVENT } from "../lib/api";
 
 type UserShellProps = { title: string; description: string; activePage: string; children: ReactNode };
 const navItems = [
@@ -15,6 +15,12 @@ const navItems = [
 
 export function UserShell({ title, description, activePage, children }: UserShellProps) {
   const router = useRouter();
+  useEffect(() => {
+    const signIn = () => router.replace("/login?reason=session-expired");
+    if (!localStorage.getItem("tripnest_token")) signIn();
+    window.addEventListener(SESSION_EXPIRED_EVENT, signIn);
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, signIn);
+  }, [router]);
   function signOut() { clearSession(); router.push("/"); }
   return (
     <div className="min-h-screen bg-[#f6f8fc] text-[#172033]">

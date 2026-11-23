@@ -5,20 +5,48 @@ import vm from 'node:vm';
 import ts from 'typescript';
 
 function client(fetch, env = { NEXT_PUBLIC_API_URL: 'https://api.example.test/' }) {
+  const values = new Map([['tripnest_token', 'saved-token'], ['tripnest_email', 'user@example.test'], ['user', '{}']]);
+  const events = [];
   let timeout;
   let cleared = false;
   let delay;
   const context = {
     exports: {}, process: { env }, fetch, Headers, FormData, AbortController, AbortSignal,
-    window: {}, localStorage: { getItem: key => key === 'tripnest_token' ? 'saved-token' : 'user@example.test' },
+    Event, window: { dispatchEvent: event => events.push(event.type) },
+    localStorage: { getItem: key => values.get(key) || null, removeItem: key => values.delete(key) },
     setTimeout: (callback, ms) => { timeout = callback; delay = ms; return 1; },
     clearTimeout: () => { cleared = true; },
   };
   vm.runInNewContext(ts.transpileModule(fs.readFileSync('app/lib/api.ts', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
   }).outputText, context);
-  return { api: context.exports.api, expire: () => timeout(), delay: () => delay, cleared: () => cleared };
+  return { api: context.exports.api, values, events, expire: () => timeout(), delay: () => delay, cleared: () => cleared };
 }
+
+test('protected 401 clears the stale session and requests sign-in', async () => {
+  const c = client(async () => Response.json({ error: 'Authentication required' }, { status: 401 }));
+  await assert.rejects(c.api('/api/notifications'), /session has expired/);
+  assert.equal(c.values.has('tripnest_token'), false);
+  assert.equal(c.values.has('user'), false);
+  assert.deepEqual(c.events, ['tripnest:session-expired']);
+});
+
+test('invalid login does not clear an existing session', async () => {
+  const c = client(async () => Response.json({ message: 'Invalid email or password' }, { status: 401 }));
+  await assert.rejects(c.api('/api/auth/login'), /Invalid email or password/);
+  assert.equal(c.values.get('tripnest_token'), 'saved-token');
+  assert.deepEqual(c.events, []);
+});
+
+test('late 401 cannot clear a newer session', async () => {
+  const c = client(async () => {
+    c.values.set('tripnest_token', 'new-session-token');
+    return Response.json({}, { status: 401 });
+  });
+  await assert.rejects(c.api('/api/notifications'), /session has expired/);
+  assert.equal(c.values.get('tripnest_token'), 'new-session-token');
+  assert.deepEqual(c.events, []);
+});
 
 test('login allows backend startup and omits stale credentials', async () => {
   const c = client(async (url, options) => {

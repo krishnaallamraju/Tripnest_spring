@@ -51,6 +51,7 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
   const [notificationLoading, setNotificationLoading] =
     useState(true);
 
@@ -84,11 +85,9 @@ export default function DashboardPage() {
 
       setNotifications(notificationData || []);
       setUnreadCount(count || 0);
+      setNotificationError("");
     } catch (reason) {
-      console.error(
-        "Could not load notifications:",
-        reason
-      );
+      setNotificationError(reason instanceof Error ? reason.message : "Notifications could not be loaded.");
     } finally {
       setNotificationLoading(false);
     }
@@ -130,10 +129,7 @@ export default function DashboardPage() {
         );
       }
     } catch (reason) {
-      console.error(
-        "Could not mark notification as read:",
-        reason
-      );
+      setNotificationError(reason instanceof Error ? reason.message : "Notification could not be updated.");
     }
   };
 
@@ -213,6 +209,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Notification List */}
+              {notificationError && <p role="alert" className="px-4 py-3 text-sm text-red-700">{notificationError}</p>}
               <div className="max-h-[420px] overflow-y-auto">
                 {notificationLoading &&
                 notifications.length === 0 ? (
